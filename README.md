@@ -1,1 +1,1 @@
-# Elixir-x-Kafka
+# Elixir-x-Pub-Sub
