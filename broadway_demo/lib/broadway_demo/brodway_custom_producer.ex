@@ -1,6 +1,9 @@
 defmodule BroadwayDemo.BroadwayCustomProducer do
   @moduledoc false
 
+  # Producteur → Processor (handle_message) → Batcher A → handle_batch(:batcher_a)
+  #                                   ↘ Batcher B → handle_batch(:batcher_b)
+
   use Broadway
 
   alias Broadway.Message
@@ -10,7 +13,7 @@ defmodule BroadwayDemo.BroadwayCustomProducer do
 
     Broadway.start_link(__MODULE__,
       name: __MODULE__,
-      # Kafka rbitmq, sqs et autres
+      # PubSub, Kafka, RabitMq, etc
       producer: [
         module:
           {BroadwayCloudPubSub.Producer,
@@ -44,9 +47,6 @@ defmodule BroadwayDemo.BroadwayCustomProducer do
     )
   end
 
-  # Producteur → Processor (handle_message) → Batcher A → handle_batch(:batcher_a)
-  #                                   ↘ Batcher B → handle_batch(:batcher_b)
-
   def prepare_messages(messages, _context) do
     Enum.map(messages, fn msg ->
       Broadway.Message.update_data(msg, fn data ->
@@ -58,11 +58,13 @@ defmodule BroadwayDemo.BroadwayCustomProducer do
     end)
   end
 
-  # traite chaque message unitairement dès sa sortie du producteur et les regroupe dans un batcher. Des que le nombrede message est attent alors ils sont envoyer a hendel_batch
+  @doc """
+    # Processes each message individually as it comes out of the producer and groups them into a batcher.
+    # As soon as the required number of messages is reached, they are sent to handle_batch.
+  """
   def handle_message(_, %Broadway.Message{data: %{event: {:ok, taxidata}}} = message, _) do
     IO.puts("#{inspect(self())} Handling first step: #{inspect(taxidata)}")
     message = Broadway.Message.update_data(message, fn _data -> taxidata end)
-    IO.inspect(taxidata["ride_status"], label: "Ride status")
 
     case taxidata["ride_status"] do
       "enroute" ->
@@ -75,7 +77,7 @@ defmodule BroadwayDemo.BroadwayCustomProducer do
         Broadway.Message.put_batcher(message, :dropoff)
 
       _ ->
-        ## mark the message as failed
+        # mark the message as failed
         Broadway.Message.failed(message, "unknown-status")
     end
   end
@@ -85,13 +87,16 @@ defmodule BroadwayDemo.BroadwayCustomProducer do
     Broadway.Message.failed(message, "unknown-status")
   end
 
-  # acknowledge messages that failed we can alwo resend them
+  @doc """
+    # Acknowledge messages that failed
+    # This function is called when a message fails to be processed.
+  """
   def handle_failed(messages, _) do
     IO.puts("messages in faild stage: #{inspect(messages)}")
 
     Enum.map(messages, fn
       %{status: %{failed: "unknown-status"}} = message ->
-        # on indique au produceuer ces messages ont été correctement consommés et n’ont pas besoin d’être renvoyés.
+        # Inform the producer that these messages have been successfully consumed and do not need to be redelivered.
         Broadway.Message.configure_ack(message, on_failure: :ack)
 
       message ->
@@ -99,9 +104,11 @@ defmodule BroadwayDemo.BroadwayCustomProducer do
     end)
   end
 
-  ## traite un lot de message, chaque batch peut envoyer les donnée qu'il a traité a une bdd ou en api ...
+  @doc """
+    Processes a batch of messages; each batch can send the data it has processed to a database or via an API …
+  """
   def handle_batch(:enroute, messages, batch_info, _context) do
-    # les message renvoyer par un batcher sont par defaut l’ack on a pas besoins d'ecrir du code pour tanque handel_batch ne renvoie pas d'erreur.Broadway considérera que l’ensemble du lot a bien été traitée et donc le produceur  sait que le lot de message a été consomé
+    # Messages returned by a batcher are automatically acknowledged by default; you don’t need to write any code as long as handle_batch doesn’t return an error. Broadway will consider the entire batch successfully processed, and the producer will know that the batch of messages has been consumed.
     IO.puts("Enroute batch: #{inspect(batch_info)}")
 
     list = Enum.map(messages, fn message -> message.data end)
