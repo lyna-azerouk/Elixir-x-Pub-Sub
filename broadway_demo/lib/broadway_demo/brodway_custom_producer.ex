@@ -1,18 +1,21 @@
 defmodule BroadwayDemo.BroadwayCustomProducer do
   @moduledoc false
 
-    use Broadway
+  use Broadway
 
   alias Broadway.Message
 
   def start_link(opts) do
+    IO.puts(" Démarrage du pipeline BroadwayCustomProducer…")
+
     Broadway.start_link(__MODULE__,
       name: __MODULE__,
-      ## Kfka rbitmq, sqs et autres
+      # Kafka rbitmq, sqs et autres
       producer: [
         module:
           {BroadwayCloudPubSub.Producer,
-           subscription: "projects/your-account-name/subscriptions/nyc-taxi-sub"},
+           goth: BroadwayDemo.Goth,
+           subscription: "projects/my-broadway-project/subscriptions/my-app-sub"},
         concurrency: 1
       ],
       processors: [
@@ -44,12 +47,13 @@ defmodule BroadwayDemo.BroadwayCustomProducer do
   # Producteur → Processor (handle_message) → Batcher A → handle_batch(:batcher_a)
   #                                   ↘ Batcher B → handle_batch(:batcher_b)
 
-  def prepare_message(message, _context) do
-    IO.puts("Message in prepare stage: #{inspect(message)}")
-
-    Enum.map(message, fn msg ->
+  def prepare_messages(messages, _context) do
+    Enum.map(messages, fn msg ->
       Broadway.Message.update_data(msg, fn data ->
-        %{event: Jason.decode(data)}
+        case Jason.decode(data) do
+          {:ok, decoded} -> %{event: {:ok, decoded}}
+          error -> %{event: error}
+        end
       end)
     end)
   end
@@ -58,6 +62,7 @@ defmodule BroadwayDemo.BroadwayCustomProducer do
   def handle_message(_, %Broadway.Message{data: %{event: {:ok, taxidata}}} = message, _) do
     IO.puts("#{inspect(self())} Handling first step: #{inspect(taxidata)}")
     message = Broadway.Message.update_data(message, fn _data -> taxidata end)
+    IO.inspect(taxidata["ride_status"], label: "Ride status")
 
     case taxidata["ride_status"] do
       "enroute" ->

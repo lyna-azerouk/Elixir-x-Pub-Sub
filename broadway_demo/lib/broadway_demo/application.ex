@@ -8,6 +8,7 @@ defmodule BroadwayDemo.Application do
   @impl true
   def start(_type, _args) do
     children = [
+      {Goth, name: BroadwayDemo.Goth},
       BroadwayDemoWeb.Telemetry,
       BroadwayDemo.Repo,
       {DNSCluster, query: Application.get_env(:broadway_demo, :dns_cluster_query) || :ignore},
