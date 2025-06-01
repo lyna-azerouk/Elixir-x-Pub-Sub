@@ -110,7 +110,7 @@ defmodule BroadwayDemo.BroadwayCustomProducer do
   def handle_batch(:enroute, messages, batch_info, _context) do
     # Messages returned by a batcher are automatically acknowledged by default; you don’t need to write any code as long as handle_batch doesn’t return an error. Broadway will consider the entire batch successfully processed, and the producer will know that the batch of messages has been consumed.
     IO.puts("Enroute batch: #{inspect(batch_info)}")
-
+    IO.inspect(messages, label: "Enroute messages")
     list = Enum.map(messages, fn message -> message.data end)
 
     IO.inspect(list, label: "Got enroute messages")
