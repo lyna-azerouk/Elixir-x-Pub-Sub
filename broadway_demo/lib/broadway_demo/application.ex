@@ -17,7 +17,8 @@ defmodule BroadwayDemo.Application do
       # Start a worker by calling: BroadwayDemo.Worker.start_link(arg)
       # {BroadwayDemo.Worker, arg},
       # Start to serve requests, typically the last entry
-      BroadwayDemoWeb.Endpoint
+      BroadwayDemoWeb.Endpoint,
+      {BroadwayDemo.BroadwayCustomProducer, []}
     ]
 
     # See https://hexdocs.pm/elixir/Supervisor.html

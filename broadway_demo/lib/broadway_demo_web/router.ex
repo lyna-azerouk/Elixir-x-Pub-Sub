@@ -37,7 +37,12 @@ defmodule BroadwayDemoWeb.Router do
     scope "/dev" do
       pipe_through :browser
 
-      live_dashboard "/dashboard", metrics: BroadwayDemoWeb.Telemetry
+      live_dashboard "/dashboard",
+        metrics: BroadwayDemoWeb.Telemetry,
+        additional_pages: [
+          broadway: {BroadwayDashboard, pipelines: [BroadwayDemo.BroadwayCustomProducer]}
+        ]
+
       forward "/mailbox", Plug.Swoosh.MailboxPreview
     end
   end

@@ -19,7 +19,7 @@ defmodule BroadwayDemo.MixProject do
   def application do
     [
       mod: {BroadwayDemo.Application, []},
-      extra_applications: [:logger, :runtime_tools]
+      extra_applications: [:logger, :runtime_tools, :os_mon]
     ]
   end
 
@@ -58,7 +58,13 @@ defmodule BroadwayDemo.MixProject do
       {:gettext, "~> 0.20"},
       {:jason, "~> 1.2"},
       {:dns_cluster, "~> 0.1.1"},
-      {:bandit, "~> 1.5"}
+      {:bandit, "~> 1.5"},
+
+      # Broadway
+      {:broadway, github: "dashbitco/broadway", override: true},
+      {:broadway_dashboard, github: "dashbitco/broadway_dashboard", override: true},
+      {:broadway_cloud_pub_sub, github: "dashbitco/broadway_cloud_pub_sub", override: true},
+      {:goth, "~> 1.0"}
     ]
   end
 
